@@ -1,6 +1,6 @@
 # FookIT
 
-## Aptech Internal Examination *Helper* ;) Software
+## Aptech Internal Examination *Helper* ;)
 
 ### Features
 - **Pure Go (No CGO Dependency)**
