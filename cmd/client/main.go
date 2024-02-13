@@ -1,56 +1,75 @@
-// package main
-
-// import (
-// 	"runtime"
-
-// 	"github.com/go-gl/glfw/v3.3/glfw"
-// )
-
-// func init() {
-// 	// This is needed to arrange that main() runs on main thread.
-// 	// See documentation for functions that are only allowed to be called from the main thread.
-// 	runtime.LockOSThread()
-// }
-
-// func main() {
-// 	err := glfw.Init()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	defer glfw.Terminate()
-
-// 	window, err := glfw.CreateWindow(640, 480, "Testing", nil, nil)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	window.MakeContextCurrent()
-// 	window.SetOpacity(0)
-// 	window.Maximize()
-// 	for !window.ShouldClose() {
-// 		// Do OpenGL stuff.
-// 		window.SwapBuffers()
-// 		glfw.PollEvents()
-
-// 	}
-// }
-
 package main
 
+// // import (
+// // 	"runtime"
+
+// // 	"github.com/go-gl/glfw/v3.3/glfw"
+// // )
+
+// // func init() {
+// // 	// This is needed to arrange that main() runs on main thread.
+// // 	// See documentation for functions that are only allowed to be called from the main thread.
+// // 	runtime.LockOSThread()
+// // }
+
+// // func main() {
+// // 	err := glfw.Init()
+// // 	if err != nil {
+// // 		panic(err)
+// // 	}
+// // 	defer glfw.Terminate()
+
+// // 	window, err := glfw.CreateWindow(640, 480, "Testing", nil, nil)
+// // 	if err != nil {
+// // 		panic(err)
+// // 	}
+
+// // 	window.MakeContextCurrent()
+// // 	window.SetOpacity(0)
+// // 	window.Maximize()
+// // 	for !window.ShouldClose() {
+// // 		// Do OpenGL stuff.
+// // 		window.SwapBuffers()
+// // 		glfw.PollEvents()
+
+// // 	}
+// // }
+
+// package main
+
 import (
+	"context"
 	"fmt"
+
 	"image"
 	"image/png"
 	"math/rand"
 	"os"
 	"syscall"
-	"time"
 	"unsafe"
 
+	"fyne.io/systray/example/icon"
+	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/daspoet/gowinkey"
 	"github.com/gen2brain/beeep"
+	"github.com/getlantern/systray"
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/kbinani/screenshot"
 )
+
+func credentials() (*cloudinary.Cloudinary, context.Context) {
+	// Add your Cloudinary credentials, set configuration parameter
+	// Secure=true to return "https" URLs, and create a context
+	//===================
+	cld, _ := cloudinary.New()
+	cld.Config.URL.Secure = true
+	cld.Config.Cloud.APIKey = "483785888746772"
+	cld.Config.Cloud.APISecret = "dpIhboL06S4usggEA7_lIi5O9oU"
+	cld.Config.Cloud.CloudName = "dsryinzqb"
+	ctx := context.Background()
+	return cld, ctx
+}
 
 func getPos() (int32, int32) {
 	userDll := syscall.NewLazyDLL("user32.dll")
@@ -96,117 +115,128 @@ func snap(x1, x2, y1, y2 int) {
 		fmt.Printf("#%d : %v \"%s\"\n", i, bounds, fileName)
 	}
 }
-func main() {
-	keys := []gowinkey.VirtualKey{
-		gowinkey.VK_RBUTTON,
-		gowinkey.VK_Q,
+
+const (
+	screenWidth  = 300
+	screenHeight = 300
+)
+
+var (
+	isDisplayed = true
+	text        = "Yeeeeeeeeeeeeeeesh!"
+)
+
+type Game struct{}
+
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+	return screenWidth, screenHeight
+}
+func (g *Game) Init() {
+
+}
+func (g *Game) Update() error {
+	if ebiten.IsKeyPressed(ebiten.KeyUp) {
+		isDisplayed = false
 	}
-	err := beeep.Notify("System", "Started", "assets/information.png")
-	if err != nil {
-		panic(err)
+	if ebiten.IsKeyPressed(ebiten.KeyDown) {
+		isDisplayed = true
 	}
-	events, stopFn := gowinkey.Listen(gowinkey.Selective(keys...))
-
-	time.AfterFunc(time.Minute, func() {
-		stopFn()
-	})
-
-	for e := range events {
-		switch e.State {
-		case gowinkey.KeyDown:
-
-			x1, y1 = getPos()
-		case gowinkey.KeyUp:
-			x2, y2 = getPos()
-
-			go snap(int(x1), int(y1), int(x2), int(y2))
-			fmt.Println("released", e)
-		}
-	}
+	return nil
 }
 
-// package main
+func (g *Game) Draw(screen *ebiten.Image) {
+	if isDisplayed {
+		ebitenutil.DebugPrint(screen, text)
+	}
 
-// import (
-// 	"time"
+}
 
-// 	"github.com/daspoet/gowinkey"
-// 	"github.com/hajimehoshi/ebiten/v2"
-// 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-// )
+const (
+	width  = 200
+	height = 200
+)
 
-// const (
-// 	screenWidth  = 300
-// 	screenHeight = 300
-// )
+func onReady() {
+	systray.SetIcon(icon.Data)
+	systray.SetTitle("Awesome App")
+	systray.SetTooltip("Pretty awesome超级棒")
 
-// var (
-// 	isDisplayed = false
-// )
+	mQuitOrig := systray.AddMenuItem("Quit", "Quit the whole app")
+	go func() {
+		<-mQuitOrig.ClickedCh
+		fmt.Println("Requesting quit")
+		systray.Quit()
+		fmt.Println("Finished quitting")
+	}()
 
-// type Game struct{}
+	// Sets the icon of a menu item. Only available on Mac and Windows.
+	mQuitOrig.SetIcon(icon.Data)
+}
 
-// func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
-// 	return screenWidth, screenHeight
-// }
-// func (g *Game) Init() {
+func onExit() {
+	print("onExit called!")
+	os.Exit(0)
+	// clean up here
+}
+func changeText(textStr string) {
+	isDisplayed = false
+	text = textStr
+	isDisplayed = true
+}
+func main() {
 
-// }
-// func (g *Game) Update() error {
-// 	return nil
-// }
+	go func() {
+		keys := []gowinkey.VirtualKey{
+			gowinkey.VK_RBUTTON,
+			gowinkey.VK_Q,
+		}
+		events, _ := gowinkey.Listen(gowinkey.Selective(keys...))
 
-// func (g *Game) Draw(screen *ebiten.Image) {
-// 	if isDisplayed {
-// 		ebitenutil.DebugPrint(screen, "This is a test.")
-// 	}
+		for e := range events {
+			pressedKey := e.VirtualKey
+			switch e.State {
+			case gowinkey.KeyDown:
+				if pressedKey == gowinkey.VK_RBUTTON {
+					changeText("Started!")
+					// Right button was pressed
+					print("Right click")
+					x1, y1 = getPos()
+				} else if pressedKey == gowinkey.VK_Q {
+					// Q key was pressed
+					print("Q Presssed")
+					systray.Quit()
+				}
 
-// }
+				print("Started!")
+			case gowinkey.KeyUp:
+				if pressedKey == gowinkey.VK_RBUTTON {
+					changeText("Stopped!")
+					// Right button was pressed
+					print("Right click")
+					x2, y2 = getPos()
+				} else if pressedKey == gowinkey.VK_Q {
+					// Q key was pressed
+					print("Q Presssed")
+					systray.Quit()
+				}
+				print("Ended!")
 
-// const (
-// 	width  = 200
-// 	height = 200
-// )
+				go snap(int(x1), int(y1), int(x2), int(y2))
+			}
+		}
+	}()
+	go systray.Run(onReady, onExit)
+	ebiten.SetWindowTitle("Ebiten Test")
+	ebiten.SetWindowDecorated(false)
+	ebiten.SetWindowFloating(true)
+	ebiten.SetWindowSize(width, height)
+	ebiten.SetWindowMousePassthrough(true)
 
-// func main() {
-// 	go func() {
-// 		keys := []gowinkey.VirtualKey{
-// 			gowinkey.VK_Q,
-// 		}
-// 		events, stopFn := gowinkey.Listen(gowinkey.Selective(keys...))
+	op := &ebiten.RunGameOptions{}
+	op.ScreenTransparent = true
+	op.SkipTaskbar = true
 
-// 		time.AfterFunc(time.Minute, func() {
-// 			stopFn()
-// 		})
-
-// 		for e := range events {
-// 			switch e.State {
-// 			case gowinkey.KeyDown:
-
-// 				// x1, x2 = getPos()qqqqq
-
-// 			case gowinkey.KeyUp:
-// 				// y1, y2 = getPos()
-// 				println("Pressed!")
-// 				// width := math.Abs(float64(x2) - float64(x1))
-// 				// height := math.Abs(float64(y2) - float64(y1))
-// 				// fmt.Println(width)
-// 				// fmt.Println(height)
-// 				// go snap(width, height)qqq
-// 				// fmt.Println("released", e)
-// 			}
-// 		}
-// 	}()
-// 	ebiten.SetWindowTitle("Ebiten Test")
-// 	ebiten.SetWindowDecorated(false)
-// 	ebiten.SetWindowFloating(true)
-// 	ebiten.SetWindowSize(width, height)
-// 	ebiten.SetWindowMousePassthrough(true)
-
-//		op := &ebiten.RunGameOptions{}
-//		op.ScreenTransparent = true
-//		op.SkipTaskbar = false
-//		if err := ebiten.RunGameWithOptions(&Game{}, op); err != nil {
-//			panic(err)
-//		}
-//	}
+	if err := ebiten.RunGameWithOptions(&Game{}, op); err != nil {
+		panic(err)
+	}
+}
